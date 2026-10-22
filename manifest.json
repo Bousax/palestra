@@ -1,0 +1,18 @@
+{
+  "name": "Palestra — Allenamenti & Progressi",
+  "short_name": "Palestra",
+  "description": "Gestione allenamenti, circuiti, timer e tracciamento progressi di forza (1RM).",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#121316",
+  "theme_color": "#121316",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
