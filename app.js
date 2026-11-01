@@ -29,6 +29,31 @@ function formatSeconds(sec) {
   return `${String(mins).padStart(2, '0')}:${String(rem).padStart(2, '0')}`;
 }
 
+function formatDurationClock(sec) {
+  const s = Math.max(0, Math.floor(sec));
+  const hrs = Math.floor(s / 3600);
+  const mins = Math.floor((s % 3600) / 60);
+  const rem = s % 60;
+  if (hrs > 0) {
+    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(rem).padStart(2, '0')}`;
+  }
+  return `${String(mins).padStart(2, '0')}:${String(rem).padStart(2, '0')}`;
+}
+
+function formatDurationVerbose(sec) {
+  const s = Math.max(0, Math.floor(sec));
+  const hrs = Math.floor(s / 3600);
+  const mins = Math.floor((s % 3600) / 60);
+  const rem = s % 60;
+  if (hrs > 0) {
+    return `${hrs}h ${mins}m ${rem}s`;
+  }
+  if (mins > 0) {
+    return `${mins} min ${rem} sec`;
+  }
+  return `${rem} sec`;
+}
+
 function uid(prefix = 'id') {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
@@ -769,6 +794,7 @@ const App = {
       paused: false,
       remainingSec: 0,
       totalPhaseSec: 0,
+      elapsedWorkoutSec: 0,
       lastBeepSecond: null,
       tempWeight: steps[0].weight,
       tempReps: steps[0].reps,
@@ -791,7 +817,15 @@ const App = {
       const dt = (now - lastTick) / 1000;
       lastTick = now;
 
-      if (!this.live || this.live.paused) return;
+      if (!this.live || this.live.phase === 'FINISHED') return;
+
+      // Il tempo complessivo della scheda scorre dall'avvio fino al termine (si ferma se l'allenamento è in pausa)
+      if (!this.live.paused) {
+        this.live.elapsedWorkoutSec += dt;
+        this.updateWorkoutElapsedDOM();
+      }
+
+      if (this.live.paused) return;
 
       if (this.live.phase === 'PREP' || this.live.phase === 'WORK_TIME' || this.live.phase === 'REST') {
         this.live.remainingSec -= dt;
@@ -1044,19 +1078,38 @@ const App = {
     digitsEl.classList.toggle('countdown-warn', ceilSec <= 3);
   },
 
+  updateWorkoutElapsedDOM() {
+    const el = document.getElementById('live-workout-elapsed');
+    if (!el || !this.live) return;
+    el.textContent = formatDurationClock(this.live.elapsedWorkoutSec);
+  },
+
   renderLiveOverlay() {
     const overlay = document.getElementById('live-workout-overlay');
     if (!this.live) return;
 
     if (this.live.phase === 'FINISHED') {
+      const totalClock = formatDurationClock(this.live.elapsedWorkoutSec);
+      const totalVerbose = formatDurationVerbose(this.live.elapsedWorkoutSec);
       overlay.innerHTML = `
         <div class="live-stage" style="justify-content:center; gap:18px">
           <div style="font-size:3.2rem">🏆</div>
           <h2 style="font-size:1.8rem">Allenamento Completato!</h2>
           <p style="color:var(--text-secondary)">
-            Hai terminato <strong>${this.escape(this.live.workoutName)}</strong>.<br/>
-            Serie registrate nello storico: <strong>${this.live.savedLogsCount}</strong>
+            Hai terminato <strong>${this.escape(this.live.workoutName)}</strong>.
           </p>
+          <div class="grid-2" style="width:100%; margin:4px 0">
+            <div class="card" style="margin-bottom:0; padding:14px">
+              <div style="font-size:0.74rem; color:var(--text-secondary); text-transform:uppercase">Durata Scheda</div>
+              <div style="font-size:1.45rem; font-weight:700; color:var(--accent); margin-top:4px; font-variant-numeric:tabular-nums">${totalClock}</div>
+              <div style="font-size:0.78rem; color:var(--text-secondary); margin-top:2px">${totalVerbose}</div>
+            </div>
+            <div class="card" style="margin-bottom:0; padding:14px">
+              <div style="font-size:0.74rem; color:var(--text-secondary); text-transform:uppercase">Record Salvati</div>
+              <div style="font-size:1.45rem; font-weight:700; color:var(--sage); margin-top:4px">${this.live.savedLogsCount}</div>
+              <div style="font-size:0.78rem; color:var(--text-secondary); margin-top:2px">serie nello storico</div>
+            </div>
+          </div>
           <button class="btn btn-primary btn-lg" onclick="App.closeLiveWorkout(false)">Torna alla Home</button>
         </div>
       `;
@@ -1252,7 +1305,12 @@ const App = {
           <div style="font-size:0.78rem; color:var(--text-secondary)">${this.escape(this.live.workoutName)}</div>
           <div style="font-size:0.84rem; font-weight:600">Step ${this.live.stepIndex + 1} di ${this.live.steps.length}</div>
         </div>
-        <button class="btn btn-ghost btn-sm" onclick="App.closeLiveWorkout(true)">Chiudi ✕</button>
+        <div style="display:flex; align-items:center; gap:8px">
+          <div class="badge badge-accent" style="font-variant-numeric:tabular-nums; padding:5px 10px; font-size:0.8rem" title="Durata scheda">
+            ⏱ <span id="live-workout-elapsed">${formatDurationClock(this.live.elapsedWorkoutSec)}</span>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="App.closeLiveWorkout(true)">Chiudi ✕</button>
+        </div>
       </div>
       <div class="live-progress-bar">
         <div class="live-progress-fill" style="width:${progressPct}%"></div>

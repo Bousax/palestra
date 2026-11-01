@@ -1,4 +1,4 @@
-const CACHE_NAME = 'palestra-pwa-v2';
+const CACHE_NAME = 'palestra-pwa-v3';
 const ASSETS = [
   './',
   './index.html',
